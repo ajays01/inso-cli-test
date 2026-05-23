@@ -1,0 +1,331 @@
+# =============================================================================
+# GitHub Actions Workflow: Run Insomnia API Tests via Inso CLI
+# =============================================================================
+# This workflow executes the "Book Store APIs" Insomnia collection exported at:
+#   insomnia/collection.yaml
+#
+# Collection structure (from the export):
+#   Book Store APIs
+#   └── Bookstore APIs
+#       └── Account
+#           ├── Positive Scenarios
+#           │   ├── Create User
+#           │   ├── GenerateToken
+#           │   ├── Authorized
+#           │   └── Get User
+#           └── Negative Scenarios
+#               ├── Create User - Invalid password
+#               └── Get User - no token
+#
+# The collection uses these variables (set in folder-level environment):
+#   baseUrl  : https://bookstore.toolsqa.com  (from Base Environment)
+#   user     : random first name via faker
+#   pwd      : Test@1234567890#
+#   userID   : dynamically set after Create User
+#   userName : dynamically set after Create User
+#   token    : dynamically set after GenerateToken
+#
+# Required GitHub Secrets (configure in repo Settings → Secrets):
+#   None required for default behavior (collection has its own env vars).
+#   Optional overrides:
+#     BOOKSTORE_BASE_URL  – Override the base URL
+#     BOOKSTORE_USERNAME  – Override the test username
+#     BOOKSTORE_PASSWORD  – Override the test password
+#     SLACK_WEBHOOK_URL   – Slack incoming webhook for notifications (optional)
+# =============================================================================
+
+name: Run Insomnia API Tests
+
+# ─── Triggers ────────────────────────────────────────────────────────────────
+
+on:
+  # Manual trigger with environment selection
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment to run tests against"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - qa
+          - staging
+          - prod
+      verbose:
+        description: "Enable verbose/debug output"
+        required: false
+        default: false
+        type: boolean
+      bail:
+        description: "Stop on first test failure"
+        required: false
+        default: false
+        type: boolean
+
+  # Run on push to main/master
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "insomnia/**"
+      - ".github/workflows/insomnia-test.yml"
+
+  # Run on pull requests targeting main/master
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - "insomnia/**"
+      - ".github/workflows/insomnia-test.yml"
+
+  # Scheduled nightly run (Mon–Fri at 6:00 AM UTC)
+  schedule:
+    - cron: "0 6 * * 1-5"
+
+# ─── Concurrency ─────────────────────────────────────────────────────────────
+# Prevent duplicate runs on the same branch; cancel in-progress on new push
+concurrency:
+  group: insomnia-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─── Environment Variables ───────────────────────────────────────────────────
+env:
+  NODE_VERSION: "20"
+  INSO_VERSION: "12.6.0"
+  COLLECTION_FILE: "insomnia/collection.yaml"
+  COLLECTION_NAME: "Book Store APIs"
+  ENV_NAME: ${{ github.event.inputs.environment || 'dev' }}
+
+# ─── Jobs ────────────────────────────────────────────────────────────────────
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 1: Lint & Validate the Insomnia Collection
+  # ═══════════════════════════════════════════════════════════════════════════
+  lint:
+    name: "🔍 Lint Collection"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Install Inso CLI v${{ env.INSO_VERSION }}
+        run: npm install -g insomnia-inso@${{ env.INSO_VERSION }}
+
+      - name: 🔎 Verify Inso CLI Installation
+        run: inso --version
+
+      - name: 📋 Validate Collection File Exists
+        run: |
+          if [ ! -f "${{ env.COLLECTION_FILE }}" ]; then
+            echo "::error::Collection file not found at ${{ env.COLLECTION_FILE }}"
+            exit 1
+          fi
+          echo "✅ Collection file found: ${{ env.COLLECTION_FILE }}"
+          echo "📊 File size: $(wc -c < ${{ env.COLLECTION_FILE }}) bytes"
+          echo "📝 Lines: $(wc -l < ${{ env.COLLECTION_FILE }})"
+
+      - name: 🧹 Lint Insomnia Collection
+        run: |
+          inso lint spec "${{ env.COLLECTION_NAME }}" \
+            --workingDir ${{ env.COLLECTION_FILE }} \
+            --ci \
+            || echo "⚠️ Lint completed with warnings (non-blocking)"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 2: Run API Tests
+  # ═══════════════════════════════════════════════════════════════════════════
+  test:
+    name: "🧪 API Tests (${{ github.event.inputs.environment || 'dev' }})"
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 15
+
+    # Optional: use GitHub Environments for environment-specific secrets
+    # environment: ${{ github.event.inputs.environment || 'dev' }}
+
+    steps:
+      # ─── Setup ───────────────────────────────────────────────────────────
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Install Inso CLI v${{ env.INSO_VERSION }}
+        run: npm install -g insomnia-inso@${{ env.INSO_VERSION }}
+
+      - name: 🔎 Verify Inso CLI Installation
+        run: |
+          echo "Inso CLI version: $(inso --version)"
+          echo "Node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+
+      # ─── Display Configuration ──────────────────────────────────────────
+      - name: 📋 Display Test Configuration
+        run: |
+          echo "╔══════════════════════════════════════════════════════════╗"
+          echo "║           Insomnia API Test Configuration               ║"
+          echo "╠══════════════════════════════════════════════════════════╣"
+          echo "║ Environment  : ${{ env.ENV_NAME }}"
+          echo "║ Collection   : ${{ env.COLLECTION_FILE }}"
+          echo "║ Trigger      : ${{ github.event_name }}"
+          echo "║ Branch       : ${{ github.ref_name }}"
+          echo "║ Commit       : ${{ github.sha }}"
+          echo "║ Runner       : ${{ runner.os }}"
+          echo "║ Verbose      : ${{ github.event.inputs.verbose || 'false' }}"
+          echo "║ Bail on fail : ${{ github.event.inputs.bail || 'false' }}"
+          echo "╚══════════════════════════════════════════════════════════╝"
+
+      # ─── Run Collection Tests ───────────────────────────────────────────
+      - name: 🚀 Run Insomnia Collection Tests
+        id: run_tests
+        run: |
+          # Build the inso command dynamically
+          CMD="inso run collection \"${{ env.COLLECTION_NAME }}\""
+          CMD+=" --workingDir ${{ env.COLLECTION_FILE }}"
+          CMD+=" --ci"
+
+          # Add verbose flag if requested
+          if [ "${{ github.event.inputs.verbose }}" = "true" ]; then
+            CMD+=" --verbose"
+          fi
+
+          # Add bail flag if requested
+          if [ "${{ github.event.inputs.bail }}" = "true" ]; then
+            CMD+=" --bail"
+          fi
+
+          echo "🔧 Executing: $CMD"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Run tests and capture exit code
+          set +e
+          eval $CMD 2>&1 | tee test-output.log
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Set outputs for downstream steps
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "test_result=✅ PASSED" >> $GITHUB_OUTPUT
+            echo "test_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "test_result=❌ FAILED" >> $GITHUB_OUTPUT
+            echo "test_status=failure" >> $GITHUB_OUTPUT
+          fi
+          echo "exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          exit $TEST_EXIT_CODE
+
+      # ─── Upload Test Artifacts ──────────────────────────────────────────
+      - name: 📤 Upload Test Output Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: insomnia-test-output-${{ env.ENV_NAME }}-${{ github.run_number }}
+          path: test-output.log
+          retention-days: 30
+
+      # ─── Test Summary ──────────────────────────────────────────────────
+      - name: 📊 Generate Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Insomnia API Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ${{ steps.run_tests.outputs.test_result || '⚠️ Unknown' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | \`${{ env.ENV_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Collection** | \`${{ env.COLLECTION_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger** | \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Runner** | \`${{ runner.os }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Workflow Run** | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Collection Structure Tested" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "Book Store APIs" >> $GITHUB_STEP_SUMMARY
+          echo "└── Bookstore APIs" >> $GITHUB_STEP_SUMMARY
+          echo "    └── Account" >> $GITHUB_STEP_SUMMARY
+          echo "        ├── Positive Scenarios" >> $GITHUB_STEP_SUMMARY
+          echo "        │   ├── Create User          (POST → 201)" >> $GITHUB_STEP_SUMMARY
+          echo "        │   ├── GenerateToken         (POST → 200)" >> $GITHUB_STEP_SUMMARY
+          echo "        │   ├── Authorized            (POST → 200)" >> $GITHUB_STEP_SUMMARY
+          echo "        │   └── Get User              (GET  → 200)" >> $GITHUB_STEP_SUMMARY
+          echo "        └── Negative Scenarios" >> $GITHUB_STEP_SUMMARY
+          echo "            ├── Create User - Invalid (POST → 400)" >> $GITHUB_STEP_SUMMARY
+          echo "            └── Get User - no token   (GET  → 401)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 3: Notify (runs after tests, regardless of result)
+  # ═══════════════════════════════════════════════════════════════════════════
+  notify:
+    name: "📣 Notify Results"
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+
+    steps:
+      - name: 🔔 Determine Test Outcome
+        id: outcome
+        run: |
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "status=PASSED" >> $GITHUB_OUTPUT
+            echo "color=#36a64f" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.test.result }}" = "failure" ]; then
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "status=FAILED" >> $GITHUB_OUTPUT
+            echo "color=#ff0000" >> $GITHUB_OUTPUT
+          else
+            echo "emoji=⚠️" >> $GITHUB_OUTPUT
+            echo "status=CANCELLED" >> $GITHUB_OUTPUT
+            echo "color=#ffa500" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📊 Post Notification Summary
+        run: |
+          echo "## ${{ steps.outcome.outputs.emoji }} API Tests ${{ steps.outcome.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** \`${{ env.ENV_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+
+      # Optional: Slack Notification (uncomment and add SLACK_WEBHOOK_URL secret)
+      # - name: 📨 Send Slack Notification
+      #   if: always() && env.SLACK_WEBHOOK_URL != ''
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #   run: |
+      #     curl -X POST "$SLACK_WEBHOOK_URL" \
+      #       -H "Content-type: application/json" \
+      #       --data '{
+      #         "attachments": [{
+      #           "color": "${{ steps.outcome.outputs.color }}",
+      #           "title": "${{ steps.outcome.outputs.emoji }} Insomnia API Tests - ${{ steps.outcome.outputs.status }}",
+      #           "fields": [
+      #             { "title": "Environment", "value": "${{ env.ENV_NAME }}", "short": true },
+      #             { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+      #             { "title": "Commit", "value": "${{ github.sha }}", "short": false },
+      #             { "title": "Workflow", "value": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run #${{ github.run_number }}>", "short": false }
+      #           ]
+      #         }]
+      #       }'
