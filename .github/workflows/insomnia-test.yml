@@ -52,7 +52,7 @@ jobs:
 
       - name: Run Insomnia Tests
         run: |
-          inso run test \
+          inso run collection "Book Store APIs" \
           --verbose \
           --env $ENV_NAME \
           ${{ github.workspace }}/insomnia/insomnia-test.yml
