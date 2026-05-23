@@ -50,5 +50,5 @@ jobs:
 
       - name: Run Bookstore Collection
         run: |
-          inso run collection "Book Store APIs" \
+          inso run test \
           --workingDir "./insomnia/Insomnia_2026-05-23.yaml"
