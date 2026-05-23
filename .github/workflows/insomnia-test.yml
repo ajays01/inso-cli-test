@@ -1,0 +1,49 @@
+name: Run Insomnia Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select Environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - qa
+          - uat
+          - prod
+
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+jobs:
+  insomnia-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      ENV_NAME: ${{ github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Inso CLI
+        run: npm install -g insomnia-inso
+
+      - name: Show Selected Environment
+        run: echo "Running tests on $ENV_NAME environment"
+
+      - name: Run Insomnia Tests
+        run: |
+          inso run test \
+          --env $ENV_NAME \
+          --src ./insomnia/collection.yml
