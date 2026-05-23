@@ -51,5 +51,4 @@ jobs:
       - name: Run Bookstore Collection
         run: |
           inso run collection "Bookstore APIs" \
-          --env "${{ github.event.inputs.environment }}" \
           --workingDir "./insomnia/Insomnia_2026-05-23.yaml"
