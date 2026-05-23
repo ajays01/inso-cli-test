@@ -51,5 +51,6 @@ jobs:
       - name: Run Insomnia Tests
         run: |
           inso run test \
+          --verbose \
           --env $ENV_NAME \
           --src ./insomnia/insomnia-test.yml
