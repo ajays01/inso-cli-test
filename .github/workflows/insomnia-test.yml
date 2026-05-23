@@ -50,5 +50,7 @@ jobs:
 
       - name: Run Bookstore Collection
         run: |
-          inso run test \
-          --workingDir "./insomnia/Insomnia_2026-05-23.yaml"
+          inso run test Insomnia_2026-05-23 \
+          --workingDir "./insomnia"
+
+
