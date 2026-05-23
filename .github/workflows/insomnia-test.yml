@@ -22,7 +22,7 @@ on:
 
 jobs:
   insomnia-tests:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     env:
       ENV_NAME: ${{ github.event.inputs.environment || 'dev' }}
