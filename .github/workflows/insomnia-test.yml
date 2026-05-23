@@ -42,7 +42,7 @@ jobs:
       - name: Setup Inso CLI
         uses: kong/setup-inso@v2
         with:
-          inso-version: 10.3.1
+          inso-version: 12.5.0
 
       - name: Check insomnia version
         run: inso --version
