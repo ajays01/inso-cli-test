@@ -50,9 +50,8 @@ jobs:
       - name: Show Selected Environment
         run: echo "Running tests on $ENV_NAME environment"
 
-      - name: Run Insomnia Tests
+      - name: Run Bookstore Collection
         run: |
-          inso run collection "Book Store APIs" \
-          --verbose \
-          --env $ENV_NAME \
-          ${{ github.workspace }}/insomnia/insomnia-test.yml
+          inso run collection "Bookstore APIs" \
+          --env "${{ github.event.inputs.environment }}" \
+          --src "./Insomnia_2026-05-23.yaml"
