@@ -54,4 +54,4 @@ jobs:
         run: |
           inso run collection "Bookstore APIs" \
           --env "${{ github.event.inputs.environment }}" \
-          --workingDir "./Insomnia_2026-05-23.yaml"
+          --workingDir "./insomnia/Insomnia_2026-05-23.yaml"
