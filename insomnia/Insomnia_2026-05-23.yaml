@@ -1,0 +1,343 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: Book Store APIs
+meta:
+  id: wrk_ccbe50fb10aa45a2be85f379556ce925
+  created: 1773284182569
+  modified: 1779522822482
+  description: ""
+collection:
+  - name: Bookstore APIs
+    meta:
+      id: fld_ade64d29bb51495e84896db3f72cf434
+      created: 1773284205804
+      modified: 1779522445193
+      sortKey: -1773284205804
+      description: ""
+    children:
+      - name: Account
+        meta:
+          id: fld_1ca123121f7c40d1b0fc15a512baa31e
+          created: 1779522302270
+          modified: 1779522445193
+          sortKey: -1779522302270
+          description: ""
+        children:
+          - name: Positive Scenarios
+            meta:
+              id: fld_15ce1f6cf4a44f1cb9f90ae212187118
+              created: 1773285169725
+              modified: 1779522445193
+              sortKey: -1779522315439
+              description: ""
+            children:
+              - url: "{{baseUrl}}/Account/v1/User"
+                name: Create User
+                meta:
+                  id: req_89efd08919a94148bea8b800fb625411
+                  created: 1773284182637
+                  modified: 1779521067635
+                  isPrivate: false
+                  description: ""
+                  sortKey: -1773285177424
+                method: POST
+                body:
+                  mimeType: application/json
+                  text: |-
+                    {
+                      "userName": "{{ _.user }}",
+                      "password": "{{ _.pwd }}"
+                    }
+                headers:
+                  - name: Content-Type
+                    value: application/json
+                  - name: User-Agent
+                    value: insomnia/12.4.0
+                    description: ""
+                    disabled: false
+                scripts:
+                  preRequest: "\n\n"
+                  afterResponse: >+
+                    
+
+                    const myFolder = insomnia.parentFolders.get('Bookstore
+                    APIs');
+
+                    if (myFolder === undefined) {
+                    	throw Error('myFolder not found');
+                    }
+
+
+                    insomnia.test('Check if status is 201', () => {
+                        insomnia.expect(insomnia.response.code).to.eql(201);
+                    });
+
+
+                    const jsonBody = insomnia.response.json();
+
+
+                    myFolder.environment.set('userID', jsonBody.userID);
+
+                    myFolder.environment.set('userName', jsonBody.username);
+
+                settings:
+                  renderRequestBody: true
+                  encodeUrl: true
+                  followRedirects: global
+                  cookies:
+                    send: true
+                    store: true
+                  rebuildPath: true
+              - url: https://bookstore.toolsqa.com/Account/v1/GenerateToken
+                name: GenerateToken
+                meta:
+                  id: req_0b47602f62e54a6bb5a74e3d372b5f96
+                  created: 1779521095217
+                  modified: 1779521489208
+                  isPrivate: false
+                  description: ""
+                  sortKey: -1773285177324
+                method: POST
+                body:
+                  mimeType: application/json
+                  text: |-
+                    {
+                      "userName" : "{{ _.userName }}",
+                      "password": "{{pwd}}"
+                    }
+                headers:
+                  - name: Content-Type
+                    value: application/json
+                  - name: User-Agent
+                    value: insomnia/12.4.0
+                    description: ""
+                    disabled: false
+                scripts:
+                  afterResponse: >+
+                    
+                    const jsonBody = insomnia.response.json();
+
+
+                    insomnia.test('Check if status is 200', () => {
+                        insomnia.expect(insomnia.response.code).to.eql(200);
+                    });
+
+
+                    insomnia.test('Check if result is - User authorized
+                    successfully.', () => {
+                        insomnia.expect(jsonBody.result).to.eql("User authorized successfully.");
+                    });
+
+
+
+                    const myFolder = insomnia.parentFolders.get('Bookstore
+                    APIs');
+
+                    if (myFolder === undefined) {
+                    	throw Error('myFolder not found');
+                    }
+
+                    myFolder.environment.set('token', jsonBody.token);
+
+                settings:
+                  renderRequestBody: true
+                  encodeUrl: true
+                  followRedirects: global
+                  cookies:
+                    send: true
+                    store: true
+                  rebuildPath: true
+              - url: https://bookstore.toolsqa.com/Account/v1/Authorized
+                name: Authorized
+                meta:
+                  id: req_6bda235a94db4c3e8e26fc7fac176ee1
+                  created: 1779521367829
+                  modified: 1779521401103
+                  isPrivate: false
+                  description: ""
+                  sortKey: -1773285177224
+                method: POST
+                body:
+                  mimeType: application/json
+                  text: |-
+                    {
+                      "userName" : "{{ _.userName }}",
+                      "password": "{{pwd}}"
+                    }
+                headers:
+                  - name: Content-Type
+                    value: application/json
+                  - name: User-Agent
+                    value: insomnia/12.4.0
+                    description: ""
+                    disabled: false
+                scripts:
+                  afterResponse: >-
+                    
+                    const jsonBody = insomnia.response.json();
+
+
+                    insomnia.test('Check if status is 200', () => {
+                        insomnia.expect(insomnia.response.code).to.eql(200);
+                    });
+
+
+
+                    insomnia.test('Check if result is - User authorized
+                    successfully.', () => {
+                        insomnia.expect(insomnia.response.code).to.eql(200);
+                    });
+                settings:
+                  renderRequestBody: true
+                  encodeUrl: true
+                  followRedirects: global
+                  cookies:
+                    send: true
+                    store: true
+                  rebuildPath: true
+              - url: https://bookstore.toolsqa.com/Account/v1/User/{{ _.userID }}
+                name: Get User
+                meta:
+                  id: req_ac84c793443b49eda2acb916406e760c
+                  created: 1779521531477
+                  modified: 1779522290053
+                  isPrivate: false
+                  description: ""
+                  sortKey: -1773285177124
+                method: GET
+                headers:
+                  - name: User-Agent
+                    value: insomnia/12.4.0
+                    description: ""
+                    disabled: false
+                authentication:
+                  type: bearer
+                  token: "{{ _.token }}"
+                settings:
+                  renderRequestBody: true
+                  encodeUrl: true
+                  followRedirects: global
+                  cookies:
+                    send: true
+                    store: true
+                  rebuildPath: true
+              - name: Negative Scenarios
+                meta:
+                  id: fld_77f89b639df74d49abafb0aec5380ffd
+                  created: 1773285196652
+                  modified: 1779522445193
+                  sortKey: -1773285177024
+                  description: ""
+                children:
+                  - url: "{{baseUrl}}/Account/v1/User"
+                    name: Create User - Invalid password
+                    meta:
+                      id: req_ecc94bdb68b24ed086d50bb6a47fc492
+                      created: 1773284367407
+                      modified: 1779522376748
+                      isPrivate: false
+                      description: ""
+                      sortKey: -1773285202928
+                    method: POST
+                    body:
+                      mimeType: application/json
+                      text: |-
+                        {
+                          "userName": "{{username}}",
+                          "password": "{{password}}"
+                        }
+                    headers:
+                      - name: Content-Type
+                        value: application/json
+                      - name: User-Agent
+                        value: insomnia/12.4.0
+                        description: ""
+                        disabled: false
+                    scripts:
+                      afterResponse: >+
+                        
+                        insomnia.test('Check if status is 400', () => {
+                            insomnia.expect(insomnia.response.code).to.eql(400);
+                        });
+
+
+
+                        const jsonBody = insomnia.response.json();
+
+
+                        insomnia.test('Validate error message', () => {
+                            insomnia.expect(jsonBody.message).to.eql("Passwords must have at least one non alphanumeric character, one digit ('0'-'9'), one uppercase ('A'-'Z'), one lowercase ('a'-'z'), one special character and Password must be eight characters or longer.");
+                        });
+
+
+                    settings:
+                      renderRequestBody: true
+                      encodeUrl: true
+                      followRedirects: global
+                      cookies:
+                        send: true
+                        store: true
+                      rebuildPath: true
+                  - url: https://bookstore.toolsqa.com/Account/v1/User/{{ _.userID }}
+                    name: Get User - no token
+                    meta:
+                      id: req_4e09bd0aeddf4379a31db0b04c64d96e
+                      created: 1779522370032
+                      modified: 1779522442394
+                      isPrivate: false
+                      description: ""
+                      sortKey: -1773285202828
+                    method: GET
+                    headers:
+                      - name: User-Agent
+                        value: insomnia/12.4.0
+                        description: ""
+                        disabled: false
+                    authentication:
+                      type: bearer
+                      disabled: true
+                      token: "{{ _.token }}"
+                    scripts:
+                      afterResponse: >
+                        
+                        const jsonBody = insomnia.response.json();
+
+
+                        insomnia.test('Check if status is 401', () => {
+                            insomnia.expect(insomnia.response.code).to.eql(401);
+                        });
+
+
+
+                        insomnia.test('Check message', () => {
+                            insomnia.expect(jsonBody.message).to.eql("User not authorized!");
+                        });
+                    settings:
+                      renderRequestBody: true
+                      encodeUrl: true
+                      followRedirects: global
+                      cookies:
+                        send: true
+                        store: true
+                      rebuildPath: true
+    environment:
+      user: "{% faker 'randomFirstName' %}"
+      pwd: Test@1234567890#
+      userID: efdeae8a-7eb7-4399-8469-d8026911015d
+      userName: Tomas
+      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyTmFtZSI6IlRvbWFzIiwicGFzc3dvcmQiOiJUZXN0QDEyMzQ1Njc4OTAjIiwiaWF0IjoxNzc5NTIxNDc4fQ.DqNuHyZlvFX6XlokibzgRhVLtlNiJdA57xWLGjnWa6w
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_3b721651e8882c87351aa8c844e290241ddab218
+    created: 1773284182573
+    modified: 1779522445187
+environments:
+  name: Base Environment
+  meta:
+    id: env_3b721651e8882c87351aa8c844e290241ddab218
+    created: 1773284182572
+    modified: 1779522445191
+    isPrivate: false
+  data:
+    baseUrl: https://bookstore.toolsqa.com
